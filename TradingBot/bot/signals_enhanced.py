@@ -436,6 +436,8 @@ class EnhancedSignalGenerator:
             signal["take_profit"] = ticker_data["price"] * 1.05  # 5% target
             signal["volume_confirmed"] = True
             signal["trend_aligned"] = True
+            # Estimate expected return: strength * typical breakout return
+            signal["expected_return"] = signal["strength"] * 0.04  # Up to 4% for strong breakouts
             
         # 2. Momentum continuation BUY (relaxed conditions)
         elif (long_trend.direction == "bullish" and
@@ -463,6 +465,8 @@ class EnhancedSignalGenerator:
             signal["take_profit"] = current_price * 1.05
             signal["volume_confirmed"] = volume_profile.volume_ratio > 1.2  # Reduced from 1.5
             signal["trend_aligned"] = True
+            # Estimate expected return from momentum strength
+            signal["expected_return"] = signal["strength"] * 0.03  # Up to 3% for momentum
             
         # 3. Simple momentum BUY (new - less strict)
         elif (long_trend.direction == "bullish" and
@@ -489,6 +493,7 @@ class EnhancedSignalGenerator:
             signal["take_profit"] = current_price * 1.04  # 4% target
             signal["volume_confirmed"] = volume_profile.volume_ratio > 1.0
             signal["trend_aligned"] = True
+            signal["expected_return"] = signal["strength"] * 0.025  # Up to 2.5% for simple momentum
             
         # 4. Very simple trend-following BUY (most lenient)
         elif (long_trend.direction == "bullish" and
@@ -505,6 +510,7 @@ class EnhancedSignalGenerator:
             signal["take_profit"] = current_price * 1.03  # 3% target
             signal["volume_confirmed"] = volume_profile.volume_ratio > 0.8
             signal["trend_aligned"] = True
+            signal["expected_return"] = signal["strength"] * 0.02  # Up to 2% for simple trend following
             
         # 5. Trend reversal SELL conditions (support breakdown)
         elif (breakout.level_type == "support" and
@@ -597,6 +603,11 @@ class EnhancedSignalGenerator:
                 quality_factors.append(0.4)  # Increased from 0.2
             
             signal["entry_quality"] = sum(quality_factors) / len(quality_factors)
+            
+            # Set default expected_return if not already set
+            if "expected_return" not in signal or signal["expected_return"] == 0:
+                # Estimate from quality and strength
+                signal["expected_return"] = (signal["entry_quality"] * signal["strength"]) * 0.025  # Up to 2.5%
         else:
             # Log why signal is neutral for debugging (sample a few pairs)
             import logging
@@ -636,9 +647,15 @@ class EnhancedSignalGenerator:
         # Sort by combined score
         def score_signal(pair_signal):
             pair, signal = pair_signal
-            # Combine strength and quality, prefer trend-aligned trades
-            score = signal["strength"] * 0.6 + signal["entry_quality"] * 0.4
-            if signal["trend_aligned"]:
+            # Return-focused scoring: weight expected return more heavily
+            expected_return = signal.get("expected_return", 0.0)
+            strength = signal.get("strength", 0.0)
+            quality = signal.get("entry_quality", 0.0)
+            
+            # Combine expected return (40%), strength (30%), and quality (30%)
+            score = (expected_return * 40.0 + strength * 0.3 + quality * 0.3)
+            
+            if signal.get("trend_aligned", False):
                 score *= 1.2
             # Prioritize sells if requested (for risk management)
             if prioritize_sells and signal["signal"] == "sell":

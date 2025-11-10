@@ -1,0 +1,19 @@
+split:
+  method: ["wfo", "pkfe"]
+  k: 5
+  embargo_bars: 180  # label horizon
+  min_train_years: 0.5  # minimum training period
+  valid_years: 0.1
+  test_years: 0.1
+
+costs:
+  base_commission_bps: 10
+  slippage_bps: 5
+  cost_sweep: [5, 10, 20, 35, 50]
+
+diagnostics:
+  random_label_trials: 10
+  future_shift_horizon: 180
+  bootstrap_blocks: 100
+  bootstrap_trials: 1000
+

@@ -31,7 +31,10 @@ class Config(BaseModel):
     support_resistance_days: int = Field(default=7, description="Days to look back for support/resistance")
     breakout_threshold: float = Field(default=0.02, description="Percentage beyond level for breakout confirmation")
     volume_surge_multiplier: float = Field(default=2.0, description="Volume multiplier for breakout confirmation")
-    min_entry_quality: float = Field(default=0.5, description="Minimum signal quality to take trade")
+    min_entry_quality: float = Field(default=0.4, description="Minimum signal quality to take trade (lowered for more trades)")
+    return_focused_mode: bool = Field(default=True, description="Optimize for returns rather than pure Sharpe")
+    min_expected_return_pct: float = Field(default=0.01, description="Minimum expected return (1%) to take trade")
+    position_size_by_return: bool = Field(default=True, description="Scale position size by expected return")
     
     # Risk Management
     max_consecutive_errors: int = Field(default=5, description="Max errors before kill switch")

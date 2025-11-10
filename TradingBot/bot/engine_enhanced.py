@@ -568,7 +568,7 @@ class EnhancedTradingEngine:
                     # 2. Signal is still strong (quality > 0.6)
                     # 3. We have available capital
                     target_pct = self.config.max_position_pct * 0.8
-                    if current_pct < target_pct and best_signal["entry_quality"] > 0.6 and available_capital_pct > 0.05:
+                    if current_pct < target_pct and best_signal["entry_quality"] >= self.config.min_entry_quality and available_capital_pct > 0.05:
                         logger.info(
                             f"Adding to {base_currency} position "
                             f"(current: {current_pct:.1%}, target: {target_pct:.1%}, "
@@ -613,7 +613,7 @@ class EnhancedTradingEngine:
                         best_score = best_signal["entry_quality"] * best_signal["strength"]
                         improvement_ratio = best_score / worst_score if worst_score > 0 else float('inf')
                         
-                        if improvement_ratio > 1.25 and worst_position and best_signal["entry_quality"] >= 0.6:
+                        if improvement_ratio > 1.25 and worst_position and best_signal["entry_quality"] >= self.config.min_entry_quality:
                             logger.info(
                                 f"Switching from {worst_position} (score: {worst_score:.2f}) "
                                 f"to {base_currency} (score: {best_score:.2f}, improvement: {improvement_ratio:.1%}) "
@@ -635,7 +635,7 @@ class EnhancedTradingEngine:
                             )
                             return True
                     
-                    elif best_signal["entry_quality"] >= 0.6:
+                    elif best_signal["entry_quality"] >= self.config.min_entry_quality:
                         # Good signal and we have capital - open new position
                         current_position_count = len(self.positions)
                         logger.info(
@@ -650,7 +650,7 @@ class EnhancedTradingEngine:
                     else:
                         logger.info(
                             f"Skipping {base_currency} - signal quality {best_signal['entry_quality']:.2f} "
-                            f"below threshold 0.60"
+                            f"below threshold {self.config.min_entry_quality:.2f}"
                         )
                         return True
                 
