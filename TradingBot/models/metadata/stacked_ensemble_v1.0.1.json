@@ -1,0 +1,15 @@
+{
+  "name": "stacked_ensemble",
+  "version": "1.0.1",
+  "saved_at": "2025-11-10T17:45:50.347432",
+  "model_type": "StackedEnsemble",
+  "is_fitted": true,
+  "n_base_models": 3,
+  "base_model_names": [
+    "stacked_ensemble_base_0_XGBoostPredictor",
+    "stacked_ensemble_base_1_LightGBMPredictor",
+    "stacked_ensemble_base_2_RandomForestPredictor"
+  ],
+  "meta_model_name": "stacked_ensemble_meta",
+  "cv_folds": 5
+}

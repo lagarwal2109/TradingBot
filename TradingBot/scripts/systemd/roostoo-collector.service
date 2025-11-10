@@ -1,0 +1,26 @@
+[Unit]
+Description=Roostoo Data Collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+WorkingDirectory=/path/to/roostoo-sharpe-bot
+Environment="PATH=/path/to/roostoo-sharpe-bot/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/path/to/roostoo-sharpe-bot/venv/bin/python /path/to/roostoo-sharpe-bot/run.py --mode collect
+Restart=on-failure
+RestartSec=30
+StandardOutput=append:/path/to/roostoo-sharpe-bot/logs/collector.log
+StandardError=append:/path/to/roostoo-sharpe-bot/logs/collector-error.log
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/path/to/roostoo-sharpe-bot/data /path/to/roostoo-sharpe-bot/logs
+
+[Install]
+WantedBy=multi-user.target

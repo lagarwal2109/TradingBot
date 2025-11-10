@@ -1,0 +1,7 @@
+{
+  "name": "stacked_ensemble_base_0_XGBoostPredictor",
+  "version": "1.0.0",
+  "saved_at": "2025-11-10T16:17:44.739423",
+  "model_type": "XGBClassifier",
+  "is_fitted": true
+}
