@@ -1,49 +1,50 @@
-# Roostoo Trading Bot - Enhanced Breakout Strategy
+# Regime-Adaptive Ensemble Trading Bot
 
-A sophisticated Python 3.10 trading bot that uses **Horus API for market data** and **Roostoo API for trading execution**. Implements a multi-timeframe trend-following breakout strategy with volume confirmation, optimized for the HK University Web3 Quant Hackathon.
+A sophisticated Python 3.10+ trading bot that uses **machine learning ensemble models** with **regime detection** to predict cryptocurrency price movements. Optimized for the HK University Web3 Quant Hackathon, focusing on maximizing Sharpe, Sortino, and Calmar ratios.
 
 ## Trading Strategy
 
-The bot uses an **Enhanced Trend-Following Breakout Strategy** that combines:
-- **Multi-timeframe Analysis**: Uses 24-hour (daily) trends for direction, 4-hour for confirmation, and 1-hour for entry timing
-- **Volume Confirmation**: All breakouts must be confirmed by 2x average volume
-- **Support/Resistance Levels**: Identifies key levels from 7 days of historical data
-- **Momentum Filters**: Only trades in the direction of prevailing momentum
-- **Advanced Risk Management**: Trailing stops, position sizing based on signal quality
+The bot implements a **Regime-Adaptive Ensemble Strategy** that combines:
 
-### Strategy Modes
+### Core Components
 
-1. **Enhanced Mode** (Default - Recommended): Multi-timeframe breakout strategy with volume
-2. **Sharpe Mode**: Legacy rolling Sharpe ratio strategy (4-hour window)
-3. **Tangency Mode**: Markowitz portfolio optimization approach
+1. **Regime Detection**:
+   - **GMM (Gaussian Mixture Model)**: Detects microstructure regimes (calm vs volatile)
+   - **HMM (Hidden Markov Model)**: Detects trend regimes (bearish, neutral, bullish)
+   - **Regime Fusion**: Combines both regime signals for adaptive trading
 
-## Dual API Architecture
+2. **Ensemble Machine Learning**:
+   - **Stacked Ensemble**: Combines XGBoost, LightGBM, and RandomForest models
+   - **Feature Engineering**: 100+ technical indicators, volume features, volatility metrics, multi-timeframe returns
+   - **Regime-Aware Features**: Incorporates regime probabilities into predictions
 
-The bot uses two APIs working together:
-- **🔵 Horus API**: Market data (prices, volumes, order book, historical data)
-- **🟢 Roostoo API**: Trading execution (orders, balances, account management)
+3. **Portfolio Optimization**:
+   - **Minimum Variance Frontier**: Optimizes portfolio weights to maximize Sharpe, Sortino, and Calmar ratios
+   - **Covariance Matrix**: Full correlation analysis across all trading pairs
+   - **Downside Risk**: Separate downside covariance for Sortino optimization
 
-This separation provides better data quality, faster execution, and improved reliability.
+4. **Risk Management**:
+   - **Adaptive Position Sizing**: Based on confidence, regime, and volatility
+   - **Stop Loss & Take Profit**: Regime-adaptive thresholds
+   - **Portfolio Limits**: Maximum simultaneous positions and allocation limits
+   - **Long & Short Trading**: Can profit from both upward and downward movements
 
 ## Key Features
 
-- **Dual API Integration**: Horus for data + Roostoo for trading
-- **Multi-Timeframe Trend Analysis**: Combines daily, 4-hour, and hourly timeframes
-- **Volume-Based Breakout Detection**: Confirms breakouts with volume surge (2x average)
-- **Support/Resistance Recognition**: Automatically identifies key price levels
-- **Dynamic Position Sizing**: Scales position size based on signal quality and volatility
-- **Trailing Stop Loss**: Locks in profits as trades move favorably
-- **Risk Management**: Stop loss, take profit, and position limits
-- **Data Collection**: Continuous minute bar data with volume tracking from Horus
+- **Machine Learning Ensemble**: Stacked XGBoost, LightGBM, RandomForest models
+- **Regime Detection**: GMM for microstructure, HMM for trend detection
+- **Portfolio Optimization**: Minimum variance frontier for optimal capital allocation
+- **Feature Engineering**: 100+ technical and statistical features
+- **Multi-Timeframe Analysis**: Combines multiple timeframes for robust signals
 - **Backtesting**: Comprehensive backtesting with performance metrics
-- **Kill Switch**: Automatic shutdown after consecutive errors
-- **One Trade Per Minute**: Strictly enforces exchange limits
+- **Parameter Optimization**: Optuna-based hyperparameter tuning
+- **Competition Scoring**: Optimized for 0.4×Sortino + 0.3×Sharpe + 0.3×Calmar
 
 ## Performance Metrics
 
 The bot calculates and optimizes for the following metrics:
-- **Sharpe Ratio**: Risk-adjusted returns (no annualization)
-- **Sortino Ratio**: Downside risk-adjusted returns
+- **Sharpe Ratio**: Risk-adjusted returns (annualized)
+- **Sortino Ratio**: Downside risk-adjusted returns (annualized)
 - **Maximum Drawdown**: Largest peak-to-trough decline
 - **Calmar Ratio**: Annualized return / Maximum Drawdown
 - **Competition Score**: 0.4×Sortino + 0.3×Sharpe + 0.3×Calmar
@@ -52,305 +53,337 @@ The bot calculates and optimizes for the following metrics:
 
 ### Prerequisites
 
-- Ubuntu/Debian Linux (for deployment scripts)
 - Python 3.10 or higher
-- Roostoo API credentials
+- Windows, Linux, or macOS
+- Historical price data in CSV format (minute bars)
 
 ### Quick Setup
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/roostoo-sharpe-bot.git
-cd roostoo-sharpe-bot
+git clone <your-repo-url>
+cd TradingBot
 ```
 
-2. Run the installation script:
+2. Create virtual environment:
 ```bash
-chmod +x scripts/install.sh
-./scripts/install.sh
-```
+# Windows
+python -m venv venv
+.\venv\Scripts\Activate
 
-3. Configure API credentials:
-```bash
-# Edit .env file
-nano .env
-```
-
-Add your credentials:
-```
-ROOSTOO_API_KEY=your_api_key_here
-ROOSTOO_API_SECRET=your_api_secret_here
-ROOSTOO_BASE_URL=https://api.roostoo.com
-```
-
-### Manual Setup
-
-1. Create virtual environment:
-```bash
-python3.10 -m venv venv
+# Linux/Mac
+python3 -m venv venv
 source venv/bin/activate
 ```
 
-2. Install dependencies:
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Create necessary directories:
+4. Create necessary directories:
 ```bash
-mkdir -p data logs figures
+mkdir -p data logs figures models
 ```
 
-4. Create `.env` file with your API credentials (see above)
+5. Prepare your data:
+   - Place CSV files in `data/` directory
+   - Format: `{SYMBOL}USD.csv` (e.g., `BTCUSD.csv`, `ETHUSD.csv`)
+   - Required columns: `timestamp` (index), `price`, `volume` (optional)
+   - Example:
+     ```csv
+     timestamp,price,volume
+     2024-10-26 08:00:00,50000.0,100.5
+     2024-10-26 08:01:00,50010.0,95.2
+     ```
 
 ## Usage
 
-### Data Collection
+### Step 1: Train Regime Detection Models
 
-Before trading, collect historical minute bar data:
-
-```bash
-# Start the data collector
-python run.py --mode collect
-
-# Or use the service script
-./scripts/start-collector.sh
-```
-
-The collector runs continuously and saves minute bar data to `data/<PAIR>.csv` files.
-
-### Backtesting
-
-Test your strategy on historical data:
+First, train GMM and HMM models for regime detection:
 
 ```bash
-# Basic backtest
-python backtest.py
+# Train GMM models (microstructure: calm/volatile)
+python scripts/train_regime_models.py --mode gmm --days 30
 
-# With custom parameters
-python backtest.py --mode sharpe --window 240 --momentum 20 --max-position 0.4
+# Train HMM models (trend: bearish/neutral/bullish)
+python scripts/train_regime_models.py --mode hmm --days 30
 
-# Backtest specific date range
-python backtest.py --start-date 2024-01-01 --end-date 2024-12-31
-
-# Test tangency portfolio mode
-python backtest.py --mode tangency --trade-frequency 60
+# Train both
+python scripts/train_regime_models.py --mode both --days 30
 ```
 
-Backtest outputs:
+**Output**: Models saved to `models/` directory (e.g., `gmm_regime_BTCUSD_v1.0.0.pkl`)
+
+### Step 2: Train Ensemble Model
+
+Train the stacked ensemble model for price prediction:
+
+```bash
+# Train ensemble on historical data
+python scripts/train_ensemble.py --days 30 --forward-window 180
+
+# Options:
+# --days: Number of days of historical data to use (default: 30)
+# --forward-window: Prediction window in minutes (default: 180)
+# --pairs: Comma-separated list of pairs (default: all pairs with data)
+```
+
+**Output**: Ensemble model saved to `models/ensemble_stacked_v1.0.0.pkl`
+
+### Step 3: Backtest Strategy
+
+Test the strategy on historical data:
+
+```bash
+# Basic backtest (uses optimized parameters if available)
+python backtest_regime_ensemble.py --days 15
+
+# Backtest with custom parameters
+python backtest_regime_ensemble.py --days 15 --no-optimized-params
+
+# Backtest with specific parameter overrides
+python backtest_regime_ensemble.py --days 15 --min-confidence 0.3 --trade-interval 5
+```
+
+**Output**:
 - Performance metrics in terminal
-- `figures/equity_curve.png` - Portfolio value over time
-- `figures/returns_analysis.png` - Returns distribution
-- `figures/backtest_results.csv` - Detailed results
-- `figures/backtest_metrics.json` - Performance metrics
+- `figures/backtest_regime_ensemble.json` - Detailed results
+- Console output with Sharpe, Sortino, Calmar, and Competition Score
 
-### Live Trading
+### Step 4: Optimize Parameters (Optional)
 
-Run the trading bot:
+Use Optuna to find optimal strategy parameters:
 
 ```bash
-# Run with enhanced breakout strategy (RECOMMENDED)
-python run.py --mode enhanced
+# Run optimization (may take 1-2 hours)
+python scripts/optimize_competition_strategy.py --trials 50 --days 15
 
-# Run with legacy Sharpe strategy
-python run.py --mode sharpe
-
-# Run with tangency portfolio mode
-python run.py --mode tangency
-
-# Run once (for testing)
-python run.py --mode enhanced --once
-
-# Custom parameters
-python run.py --max-position 0.3
+# Options:
+# --trials: Number of optimization trials (default: 50)
+# --days: Days of data for backtesting (default: 15)
 ```
 
-### Deployment (Ubuntu/Systemd)
+**Output**: `figures/optimized_strategy_params.json` - Best parameters for competition score
 
-Use the provided scripts for production deployment:
+### Step 5: Live Trading
+
+Run the bot for live trading:
 
 ```bash
-# Start trading bot (runs every minute via systemd timer)
-./scripts/start-bot.sh
+# Run with regime ensemble strategy (RECOMMENDED)
+python run.py --mode regime_ensemble
 
-# Stop trading bot
-./scripts/stop-bot.sh
+# Run once for testing
+python run.py --mode regime_ensemble --once
 
-# Check status
-./scripts/status.sh
+# Run with custom parameters
+python run.py --mode regime_ensemble --max-position 0.3
+```
 
-# View logs
-./scripts/logs.sh
-./scripts/logs.sh -f  # Follow mode
+## Project Structure
+
+```
+TradingBot/
+├── bot/
+│   ├── models/
+│   │   ├── ensemble_model.py          # Stacked ensemble (XGBoost, LightGBM, RF)
+│   │   ├── regime_detection.py        # GMM and HMM regime detectors
+│   │   ├── feature_engineering.py      # 100+ technical indicators
+│   │   ├── portfolio_optimizer.py      # Minimum variance frontier optimization
+│   │   └── model_storage.py            # Model persistence
+│   ├── portfolio_manager.py           # Adaptive position sizing
+│   ├── engine_regime_ensemble.py       # Main trading engine
+│   ├── datastore.py                    # Data loading and management
+│   └── config.py                       # Configuration management
+├── scripts/
+│   ├── train_regime_models.py          # Train GMM/HMM models
+│   ├── train_ensemble.py               # Train ensemble model
+│   ├── optimize_competition_strategy.py # Optuna parameter optimization
+│   └── validate_models.py             # Model validation
+├── backtest_regime_ensemble.py         # Main backtesting script
+├── run.py                              # Live trading entry point
+├── data/                               # CSV price data files
+├── models/                             # Trained model files (.pkl)
+├── figures/                            # Backtest results and plots
+└── requirements.txt                    # Python dependencies
 ```
 
 ## Configuration
 
-### Environment Variables (.env)
+### Data Format
 
-**Roostoo API (Trading):**
-- `ROOSTOO_API_KEY`: Your Roostoo API key for trading
-- `ROOSTOO_API_SECRET`: Your Roostoo API secret
-- `ROOSTOO_BASE_URL`: Roostoo API base URL (default: https://api.roostoo.com)
-
-**Horus API (Market Data):**
-- `HORUS_API_KEY`: Your Horus API key for market data (already included in template)
-- `HORUS_BASE_URL`: Horus API base URL (default: https://api.horus.com)
-- `USE_HORUS_DATA`: Enable Horus data collection (default: true)
+CSV files in `data/` directory must have:
+- **Index**: `timestamp` (datetime)
+- **Columns**: `price` (required), `volume` (optional)
+- **Format**: `{SYMBOL}USD.csv` (e.g., `BTCUSD.csv`)
 
 ### Trading Parameters
 
-The enhanced strategy uses optimized parameters based on research:
+Key parameters (can be optimized):
 
-**Multi-Timeframe Windows:**
-- Long-term trend: 1440 minutes (24 hours)
-- Short-term trend: 240 minutes (4 hours)  
-- Entry timing: 60 minutes (1 hour)
-- Volume analysis: 480 minutes (8 hours)
+- **Signal Generation**:
+  - `min_confidence`: Minimum confidence threshold (default: 0.20)
+  - `high_confidence_threshold`: High confidence threshold (default: 0.45)
+  - `momentum_threshold`: Momentum filter threshold (default: 0.0001)
 
-**Breakout Detection:**
-- Support/Resistance lookback: 7 days
-- Breakout threshold: 2% beyond level
-- Volume confirmation: 2x average volume
+- **Position Sizing**:
+  - `base_position_pct`: Base position size (default: 0.25)
+  - `calm_multiplier`: Position multiplier in calm regime (default: 1.1)
+  - `volatile_multiplier`: Position multiplier in volatile regime (default: 0.9)
+  - `bullish_multiplier`: Position multiplier in bullish trend (default: 1.3)
+  - `bearish_multiplier`: Position multiplier in bearish trend (default: 0.3)
 
-**Risk Management:**
-- Maximum position: 40% of equity (scales with signal quality)
-- Stop loss: 2% (adjustable per trade)
-- Take profit: 5% (adjustable per trade)
-- Trailing stop: 2% from peak
+- **Risk Management**:
+  - `base_stop_loss_pct`: Base stop loss percentage (default: 0.02)
+  - `base_take_profit_pct`: Base take profit percentage (default: 0.03)
+  - `max_simultaneous_positions`: Maximum concurrent positions (default: 5)
+  - `max_portfolio_allocation`: Maximum capital allocation (default: 0.9)
 
-Command-line arguments:
-- `--mode`: Strategy mode (enhanced/sharpe/tangency)
-- `--max-position`: Maximum position size as fraction of equity
-- `--once`: Run single cycle for testing
+- **Trading Frequency**:
+  - `trade_interval_minutes`: Minutes between trade evaluations (default: 5)
 
-### Risk Management
+### Environment Variables (.env)
 
-- **Position Sizing**: Inversely proportional to volatility (size ∝ 1/σ)
-- **Maximum Position**: Capped at 40% of total equity by default
-- **Minimum Order**: Enforces exchange minimum order requirements
-- **Precision Handling**: Rounds amounts and prices to exchange-specified precision
+Optional configuration (for API integration):
 
-## Architecture
+```env
+# Roostoo API (if using live trading)
+ROOSTOO_API_KEY=your_api_key_here
+ROOSTOO_API_SECRET=your_api_secret_here
+ROOSTOO_BASE_URL=https://api.roostoo.com
 
-### Core Components
-
-- **bot/config.py**: Configuration management and environment variables
-- **bot/roostoo.py**: API client with HMAC-SHA256 authentication
-- **bot/datastore.py**: Minute bar persistence and state management
-- **bot/signals.py**: Feature computation (Sharpe, momentum, volatility)
-- **bot/risk.py**: Position sizing and risk constraints
-- **bot/engine.py**: Trading logic and rebalancing engine
-- **run.py**: Main execution loop with safe startup
-- **backtest.py**: Historical strategy testing
-
-### Data Storage
-
-- **data/<PAIR>.csv**: Minute bar data (timestamp, price)
-- **data/state.json**: Current position and trading state
-- **logs/bot.log**: JSON-formatted log entries
-
-### Trading Logic
-
-1. **Signal Generation**:
-   - Compute 240-minute rolling Sharpe ratio for each pair
-   - Calculate 20-minute momentum
-   - Apply liquidity filtering
-
-2. **Position Selection**:
-   - Sharpe Mode: Select highest Sharpe ratio asset where Sharpe > 0 and momentum > 0
-   - Tangency Mode: Compute optimal long-only weights using Markowitz optimization
-
-3. **Execution**:
-   - Check one-minute trade cooldown
-   - Close current position if changing assets
-   - Open new position with volatility-adjusted sizing
-   - Record trade and update state
-
-## Safety Features
-
-- **Kill Switch**: Automatic shutdown after 5 consecutive errors
-- **Order Timeout**: Cancels orders older than 5 minutes
-- **Safe Startup**: Reconciles state with actual balances on start
-- **Trade Throttling**: Enforces one trade per minute limit
-- **Error Recovery**: Automatic retry with exponential backoff
-
-## Monitoring
-
-### Log Files
-
-- **logs/bot.log**: Main application logs (JSON format)
-- **logs/systemd.log**: Systemd service logs
-- **logs/collector.log**: Data collector logs
-
-### Health Checks
-
-```bash
-# Check if bot is running
-./scripts/status.sh
-
-# Monitor real-time logs
-tail -f logs/bot.log
-
-# Check systemd service
-sudo systemctl status roostoo-bot.timer
+# Horus API (if using live data collection)
+HORUS_API_KEY=your_api_key_here
+HORUS_BASE_URL=https://api.horus.com
 ```
 
-## Development
+## Workflow for New Users
 
-### Running Tests
+### Complete Setup Workflow
 
-```bash
-# Run unit tests (if implemented)
-python -m pytest tests/
+1. **Install Dependencies**:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # or .\venv\Scripts\Activate on Windows
+   pip install -r requirements.txt
+   ```
 
-# Run a single backtest iteration
-python backtest.py --trade-frequency 1 --end-date 2024-01-02
-```
+2. **Prepare Data**:
+   - Place CSV files in `data/` directory
+   - Ensure files have `timestamp` (index), `price`, and optionally `volume` columns
 
-### Adding New Strategies
+3. **Train Models** (in order):
+   ```bash
+   # Step 1: Train regime detectors
+   python scripts/train_regime_models.py --mode both --days 30
+   
+   # Step 2: Train ensemble model
+   python scripts/train_ensemble.py --days 30 --forward-window 180
+   ```
 
-1. Extend `SignalGenerator` class in `bot/signals.py`
-2. Implement feature computation methods
-3. Add strategy selection logic in `bot/engine.py`
-4. Update command-line arguments in `run.py`
+4. **Backtest Strategy**:
+   ```bash
+   python backtest_regime_ensemble.py --days 15
+   ```
+
+5. **Optimize Parameters** (optional, but recommended):
+   ```bash
+   python scripts/optimize_competition_strategy.py --trials 50 --days 15
+   ```
+
+6. **Run Final Backtest with Optimized Parameters**:
+   ```bash
+   python backtest_regime_ensemble.py --days 15
+   # Will automatically use optimized parameters from figures/optimized_strategy_params.json
+   ```
+
+7. **Live Trading** (if configured):
+   ```bash
+   python run.py --mode regime_ensemble
+   ```
+
+## Understanding the Strategy
+
+### How It Works
+
+1. **Regime Detection**: 
+   - Analyzes price volatility patterns (GMM) to identify calm vs volatile periods
+   - Analyzes price trends (HMM) to identify bearish, neutral, or bullish markets
+   - Adapts trading behavior based on detected regime
+
+2. **Signal Generation**:
+   - Computes 100+ features from price/volume data
+   - Feeds features to ensemble model to predict price direction
+   - Generates long/short signals with confidence scores
+
+3. **Portfolio Optimization**:
+   - Converts signals to expected returns
+   - Calculates covariance matrix from historical returns
+   - Optimizes portfolio weights to maximize Sharpe/Sortino/Calmar
+
+4. **Execution**:
+   - Opens positions based on optimized weights
+   - Manages risk with adaptive stop-loss and take-profit
+   - Closes positions when targets are hit or regime changes
+
+### Key Concepts
+
+- **Regime**: Market state (calm/volatile, bearish/neutral/bullish)
+- **Ensemble**: Combination of multiple ML models for robust predictions
+- **Portfolio Optimization**: Mathematical optimization to allocate capital optimally
+- **Competition Score**: Weighted combination of Sharpe, Sortino, and Calmar ratios
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **API Authentication Errors**:
-   - Check API credentials in `.env`
-   - Ensure API secret is correct
-   - Verify timestamp synchronization
+1. **"Could not load regime detectors"**:
+   - Solution: Train regime models first with `python scripts/train_regime_models.py --mode both`
 
-2. **Insufficient Data**:
-   - Run collector for at least 240 minutes before trading
-   - Check `data/` directory for CSV files
+2. **"No training data prepared"**:
+   - Solution: Ensure CSV files exist in `data/` directory with sufficient historical data (at least 24 hours)
 
-3. **Order Failures**:
-   - Check minimum order requirements
-   - Verify sufficient balance
-   - Review precision settings
+3. **"ValueError: cannot convert float NaN to integer"**:
+   - Solution: Check data quality, ensure no missing values in price column
 
-4. **Performance Issues**:
-   - Reduce window size for faster computation
-   - Increase trade frequency for less frequent rebalancing
-   - Check system resources
+4. **Low number of trades in backtest**:
+   - Solution: Lower `min_confidence` threshold or reduce `trade_interval_minutes`
+
+5. **Poor backtest performance**:
+   - Solution: Run parameter optimization with `scripts/optimize_competition_strategy.py`
+   - Check that models are trained on recent data
+   - Verify data quality and completeness
 
 ### Debug Mode
 
 ```bash
-# Run with debug logging
-python run.py --once  # Single cycle for debugging
+# Run backtest with verbose output
+python backtest_regime_ensemble.py --days 15 --no-optimized-params
+
+# Check model files
+ls models/*.pkl
+
+# Validate models
+python scripts/validate_models.py
 ```
 
 ## Competition Notes
 
 The bot is optimized for the HK University Web3 Quant Hackathon scoring:
-- Composite Score = 0.4×Sortino + 0.3×Sharpe + 0.3×Calmar
+- **Competition Score** = 0.4×Sortino + 0.3×Sharpe + 0.3×Calmar
 - Focuses on risk-adjusted returns over absolute returns
 - Implements strict risk management to minimize drawdowns
+- Uses portfolio optimization to maximize all three ratios simultaneously
+
+## Performance Tips
+
+1. **More Data = Better Models**: Train on at least 30 days of historical data
+2. **Regular Retraining**: Retrain models weekly or when market conditions change
+3. **Parameter Optimization**: Run optimization before competition to find best parameters
+4. **Diversification**: Trade across multiple pairs to reduce risk
+5. **Regime Awareness**: Strategy adapts to market conditions automatically
 
 ## License
 
@@ -359,7 +392,8 @@ MIT License - See LICENSE file for details
 ## Support
 
 For issues and questions:
-1. Check the troubleshooting section
+1. Check the troubleshooting section above
 2. Review logs in `logs/` directory
 3. Ensure all dependencies are correctly installed
-4. Verify API connectivity and credentials
+4. Verify data format matches requirements
+5. Check that models are trained before backtesting
