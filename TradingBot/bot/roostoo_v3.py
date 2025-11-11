@@ -247,6 +247,62 @@ class RoostooV3Client:
                 ))
             return tickers
     
+    def get_klines(
+        self,
+        pair: str,
+        interval: str = "5m",
+        start_time: Optional[int] = None,
+        end_time: Optional[int] = None,
+        limit: int = 1000
+    ) -> List[Dict[str, Any]]:
+        """Get kline/candlestick data.
+        
+        Args:
+            pair: Trading pair with slash (e.g., "BTC/USD")
+            interval: Kline interval - "1m", "5m", "15m", "1h", "4h", "1d", etc.
+            start_time: Start time in milliseconds (optional)
+            end_time: End time in milliseconds (optional)
+            limit: Number of klines (max 1000)
+            
+        Returns:
+            List of kline dictionaries with keys: open_time, open, high, low, close, volume, close_time
+        """
+        params = {
+            "pair": pair,
+            "interval": interval,
+            "limit": min(limit, 1000),
+            "timestamp": self._get_timestamp()
+        }
+        
+        if start_time:
+            params["startTime"] = str(start_time)
+        if end_time:
+            params["endTime"] = str(end_time)
+        
+        try:
+            response = self._request("GET", "/v3/klines", params=params)
+            klines_data = response.get("Data", [])
+            
+            # Convert to standardized format
+            klines = []
+            for k in klines_data:
+                klines.append({
+                    "open_time": k.get("OpenTime", k.get("open_time", 0)),
+                    "open": float(k.get("Open", k.get("open", 0))),
+                    "high": float(k.get("High", k.get("high", 0))),
+                    "low": float(k.get("Low", k.get("low", 0))),
+                    "close": float(k.get("Close", k.get("close", 0))),
+                    "volume": float(k.get("Volume", k.get("volume", 0))),
+                    "close_time": k.get("CloseTime", k.get("close_time", 0))
+                })
+            
+            return klines
+        except Exception as e:
+            # If klines endpoint doesn't exist, return empty list
+            # The script will fall back to CSV data
+            print(f"[WARN] Could not fetch klines from API: {e}")
+            return []
+    
     # Signed endpoints
     
     def balance(self) -> Dict[str, float]:

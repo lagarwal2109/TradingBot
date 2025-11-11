@@ -1,0 +1,61 @@
+symbols: ["BTCUSD", "ETHUSD", "SOLUSD", "BNBUSD"]
+
+session:
+  trade_hours_utc: [8, 20]
+  open_range_min: 15
+
+orb:
+  rsi_long_min: 55
+  rsi_short_max: 45
+  vol_spike_mult: 1.2
+  stop_atr_mult: 0.8
+  pct_stop_floor: 0.005
+  trail_atr_mult: 0.7
+  timeout_hours: 6
+  max_retries_per_side: 2
+  risk_frac: 0.0075
+
+scalp:
+  ema_fast: 5
+  ema_slow: 8
+  rsi_exhaust_long: 75
+  rsi_exhaust_short: 25
+  rv_pctile_floor: 10
+  pct_stop_floor: 0.005
+  atr_mult_stop: 0.6
+  tp_pct: 0.012
+  trail_pct: 0.004
+  max_scalps_per_day_all_pairs: 8
+  no_chase: 0.0035
+  risk_frac: 0.005
+
+risk:
+  max_daily_dd: 0.03
+  max_concurrent_positions: 4
+  max_positions_per_symbol: 2
+  max_notional_exposure_mult: 1.2
+
+fees_slip:
+  maker: 0.0002
+  taker: 0.0005
+  slippage_pct_base: 0.0001
+  vol_scaled_slippage: true
+  fill_timeout_sec: 3
+  max_extra_bps: 2
+
+backtest:
+  walk_forward:
+    train_days: 30
+    test_days: 15
+    step_days: 15
+  stress:
+    fee_mult: [1.0, 1.5]
+    slippage_mult: [1.0, 2.0, 3.0]
+    entry_delay_bars: [0, 1]
+    shock_gap_pct: 0.005
+    shock_prob: 0.01
+
+seed: 1337
+
+
+

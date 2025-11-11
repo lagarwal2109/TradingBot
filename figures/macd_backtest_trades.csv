@@ -1,0 +1,2 @@
+pair,side,entry_time,exit_time,entry_price,exit_price,amount,entry_value,exit_value,pnl,pnl_pct,exit_reason,fees
+AAVEUSD,long,2025-11-10 07:09:31.589,2025-11-10 07:09:31.589,222.3,222.3,11.246063877642824,2500.0,2500.0,-5.0,-0.2,end_of_test,5.0

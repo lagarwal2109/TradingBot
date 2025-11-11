@@ -1,0 +1,28 @@
+{
+  "initial_capital": 10000.0,
+  "final_equity": 9963.993541565833,
+  "total_return_pct": -0.36006458434167143,
+  "annualized_return_pct": -85.02985722715147,
+  "sharpe_daily": 0.2783054704063722,
+  "sortino_daily": 0.04711139106436044,
+  "calmar_ratio": -1.4149215458311226,
+  "max_drawdown_pct": -60.09510384351739,
+  "total_trades": 1,
+  "winning_trades": 1,
+  "losing_trades": 0,
+  "win_rate_pct": 100.0,
+  "avg_win": 28.165409294188432,
+  "avg_loss": 0.0,
+  "profit_factor": 0.0,
+  "avg_r": 0.9388469764729478,
+  "median_r": 0.9388469764729478,
+  "cvar_5_pct": 0.0,
+  "trades_per_day": 1.0,
+  "orb_pnl": 0.0,
+  "scalp_pnl": 28.165409294188432,
+  "symbol_pnl": {
+    "BTCUSD": 28.165409294188432
+  },
+  "total_fees": 2.9844250828115007,
+  "timestamp": "2025-11-11T15:57:53.970851"
+}

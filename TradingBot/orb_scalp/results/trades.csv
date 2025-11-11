@@ -1,0 +1,2 @@
+symbol,side,signal_type,entry_dt,exit_dt,entry_price,exit_price,quantity,pnl_abs,pnl_pct,pnl_r,fees,exit_reason,risk_dollars
+BTCUSD,short,SCALP,59,67,110280.12,109707.58542115406,0.054406904889113296,28.165409294188432,0.4694234882364738,0.9388469764729478,2.9844250828115007,STOP,30.0

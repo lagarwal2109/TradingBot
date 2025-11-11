@@ -246,8 +246,25 @@ class EnhancedTradingEngine:
                     logger.error(f"No exchange info for {roostoo_pair}")
                     return False
                     
-                # Use entry quality to scale position size
-                position_scale = 0.5 + (signal["entry_quality"] - 0.5) * 0.5  # 0.5-1.0 scale
+                # Use entry quality and expected return to scale position size
+                if self.config.position_size_by_return:
+                    # Estimate expected return from signal strength and quality
+                    expected_return = signal.get("expected_return", 0.0)
+                    if expected_return == 0:
+                        # Fallback: estimate from quality and strength - be optimistic
+                        expected_return = (signal["entry_quality"] * signal.get("strength", 0.5)) * 0.035  # Up to 3.5%
+                    
+                    # Scale by expected return (higher return = larger position)
+                    # For lower quality signals, still allow trading but with smaller size
+                    return_scale = min(expected_return / self.config.min_expected_return_pct, 2.5)  # Cap at 2.5x
+                    quality_scale = 0.4 + (signal["entry_quality"] - 0.25) * 1.2  # Scale 0.25-0.5 to 0.4-1.0
+                    position_scale = (return_scale * 0.7 + quality_scale * 0.3)  # Weight return even more
+                    position_scale = max(0.3, min(position_scale, 1.2))  # Allow 30%-120% of max position
+                else:
+                    # Scale based on quality, but be more lenient
+                    position_scale = 0.4 + (signal["entry_quality"] - 0.25) * 1.2  # Scale 0.25-0.5 to 0.4-1.0
+                    position_scale = max(0.3, min(position_scale, 1.0))
+                
                 max_position = self.config.max_position_pct * position_scale
                 
                 amount = self.risk_manager.calculate_position_size(
@@ -521,7 +538,15 @@ class EnhancedTradingEngine:
             ranked_signals = self.signal_generator.rank_trading_opportunities(all_signals)
             
             if not ranked_signals:
-                logger.info("No trading opportunities found (all signals below quality threshold or insufficient data)")
+                # Log why no signals found for debugging
+                total_signals = len(all_signals)
+                neutral_count = sum(1 for s in all_signals.values() if s.get("signal") == "neutral")
+                buy_count = sum(1 for s in all_signals.values() if s.get("signal") == "buy")
+                low_quality = sum(1 for s in all_signals.values() if s.get("entry_quality", 0) < 0.15)
+                logger.info(
+                    f"No trading opportunities: {total_signals} total signals, "
+                    f"{neutral_count} neutral, {buy_count} buy, {low_quality} below quality threshold"
+                )
                 return True
                 
             # Execute best signal (should be buy now, since we closed all sells)
@@ -568,7 +593,9 @@ class EnhancedTradingEngine:
                     # 2. Signal is still strong (quality > 0.6)
                     # 3. We have available capital
                     target_pct = self.config.max_position_pct * 0.8
-                    if current_pct < target_pct and best_signal["entry_quality"] >= self.config.min_entry_quality and available_capital_pct > 0.05:
+                    # Lower quality threshold for adding to existing positions
+                    min_quality_for_add = self.config.min_entry_quality * 0.9  # 10% lower threshold
+                    if current_pct < target_pct and best_signal["entry_quality"] >= min_quality_for_add and available_capital_pct > 0.05:
                         logger.info(
                             f"Adding to {base_currency} position "
                             f"(current: {current_pct:.1%}, target: {target_pct:.1%}, "
@@ -648,10 +675,27 @@ class EnhancedTradingEngine:
                             self.datastore.reset_error_count()
                             return True
                     else:
-                        logger.info(
-                            f"Skipping {base_currency} - signal quality {best_signal['entry_quality']:.2f} "
-                            f"below threshold {self.config.min_entry_quality:.2f}"
-                        )
+                        # Even if below threshold, consider it if expected return is good
+                        expected_return = best_signal.get("expected_return", 0.0)
+                        if expected_return >= self.config.min_expected_return_pct:
+                            # Use smaller position size for lower quality signals
+                            logger.info(
+                                f"Opening smaller position in {base_currency} "
+                                f"(quality: {best_signal['entry_quality']:.2f} below {self.config.min_entry_quality:.2f}, "
+                                f"but expected return {expected_return:.2%} is good)"
+                            )
+                            # Temporarily reduce position size for lower quality
+                            original_quality = best_signal["entry_quality"]
+                            best_signal["entry_quality"] = max(original_quality, self.config.min_entry_quality * 0.8)  # Boost slightly for execution
+                            if self.execute_trade_signal(best_pair, best_signal, balance):
+                                self.datastore.record_trade(base_currency)
+                                self.datastore.reset_error_count()
+                                return True
+                        else:
+                            logger.info(
+                                f"Skipping {base_currency} - signal quality {best_signal['entry_quality']:.2f} "
+                                f"below threshold {self.config.min_entry_quality:.2f} and low expected return"
+                            )
                         return True
                 
         except Exception as e:

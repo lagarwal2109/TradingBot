@@ -107,28 +107,28 @@ class EnhancedSignalGenerator:
         current_price = prices.iloc[-1]
         avg_price = window_prices.mean()
         
-        # Relaxed trend detection - use slope as primary indicator
+        # Very relaxed trend detection - use slope as primary indicator
         # Higher highs/lower lows are nice-to-have but not required
-        if ma_slope > 0.005:  # Reduced from 0.01 to 0.5% slope
+        if ma_slope > 0.002:  # Further reduced to 0.2% slope - very sensitive
             direction = "bullish"
             # Base strength on slope, boost if we have higher highs
-            strength = min(abs(ma_slope) * 20, 1.0)  # Increased multiplier
+            strength = min(abs(ma_slope) * 25, 1.0)  # Increased multiplier for sensitivity
             if higher_highs and not lower_lows:
                 strength = min(strength * 1.3, 1.0)  # Bonus for pattern confirmation
-        elif ma_slope < -0.005:  # Reduced from -0.01
+        elif ma_slope < -0.002:  # Further reduced
             direction = "bearish" 
-            strength = min(abs(ma_slope) * 20, 1.0)
+            strength = min(abs(ma_slope) * 25, 1.0)
             if lower_lows and not higher_highs:
                 strength = min(strength * 1.3, 1.0)
         else:
             direction = "neutral"
-            strength = 0.2
+            strength = 0.15  # Lower default strength
             
-        # Adjust strength based on price position
-        if direction == "bullish" and current_price > avg_price * 1.01:  # Reduced from 1.02
-            strength = min(strength * 1.2, 1.0)
-        elif direction == "bearish" and current_price < avg_price * 0.99:  # Reduced from 0.98
-            strength = min(strength * 1.2, 1.0)
+        # Adjust strength based on price position - more lenient
+        if direction == "bullish" and current_price > avg_price * 1.005:  # Further reduced to 0.5%
+            strength = min(strength * 1.3, 1.0)  # Increased boost
+        elif direction == "bearish" and current_price < avg_price * 0.995:  # Further reduced
+            strength = min(strength * 1.3, 1.0)  # Increased boost
             
         return TrendInfo(direction, strength, ma_slope, higher_highs, lower_lows)
     
@@ -355,7 +355,8 @@ class EnhancedSignalGenerator:
         }
         
         # Need sufficient data - use minimum of trend_window_long or trend_window_short
-        min_required = min(self.trend_window_long, self.trend_window_short + 20)  # At least short window + buffer
+        # Reduced requirement to allow trading with less data
+        min_required = min(self.trend_window_long, self.trend_window_short + 10)  # Reduced buffer from 20 to 10
         if len(df) < min_required:
             signal["reason"] = f"Insufficient data: {len(df)} rows, need {min_required}"
             return signal
@@ -439,11 +440,11 @@ class EnhancedSignalGenerator:
             # Estimate expected return: strength * typical breakout return
             signal["expected_return"] = signal["strength"] * 0.04  # Up to 4% for strong breakouts
             
-        # 2. Momentum continuation BUY (relaxed conditions)
+        # 2. Momentum continuation BUY (very relaxed conditions)
         elif (long_trend.direction == "bullish" and
-              (short_trend.direction == "bullish" or short_trend.strength > 0.3) and  # Reduced from 0.5
-              entry_trend.strength > 0.3 and  # Reduced from 0.5
-              (volume_profile.volume_trend == "increasing" or volume_profile.volume_ratio > 1.0) and  # Reduced from 1.1
+              (short_trend.direction == "bullish" or short_trend.strength > 0.2) and  # Further reduced from 0.3
+              entry_trend.strength > 0.2 and  # Further reduced from 0.3
+              (volume_profile.volume_trend == "increasing" or volume_profile.volume_ratio > 0.9) and  # Further reduced
               not volume_profile.is_divergence):
             
             signal["signal"] = "buy"
@@ -468,10 +469,10 @@ class EnhancedSignalGenerator:
             # Estimate expected return from momentum strength
             signal["expected_return"] = signal["strength"] * 0.03  # Up to 3% for momentum
             
-        # 3. Simple momentum BUY (new - less strict)
+        # 3. Simple momentum BUY (very lenient)
         elif (long_trend.direction == "bullish" and
-              long_trend.strength > 0.15 and  # Very low threshold - just need some bullishness
-              (short_trend.direction != "bearish" or short_trend.strength > 0.15) and  # Not strongly bearish
+              long_trend.strength > 0.1 and  # Even lower threshold
+              (short_trend.direction != "bearish" or short_trend.strength > 0.1) and  # Not strongly bearish
               entry_trend.direction != "bearish" and  # Not declining
               not volume_profile.is_divergence):
             
@@ -511,8 +512,40 @@ class EnhancedSignalGenerator:
             signal["volume_confirmed"] = volume_profile.volume_ratio > 0.8
             signal["trend_aligned"] = True
             signal["expected_return"] = signal["strength"] * 0.02  # Up to 2% for simple trend following
+        
+        # 5. Ultra-lenient momentum BUY (price moving up, minimal requirements)
+        elif (long_trend.direction == "bullish" and
+              long_trend.strength > 0.05 and  # Very minimal bullishness
+              entry_trend.direction != "bearish"):  # Just not declining
             
-        # 5. Trend reversal SELL conditions (support breakdown)
+            signal["signal"] = "buy"
+            signal["strength"] = max(long_trend.strength * 0.8, 0.25)  # Lower strength threshold
+            signal["reason"] = "Ultra-lenient bullish momentum"
+            
+            current_price = ticker_data["price"]
+            signal["stop_loss"] = current_price * 0.96  # 4% stop
+            signal["take_profit"] = current_price * 1.04  # 4% target
+            signal["volume_confirmed"] = volume_profile.volume_ratio > 0.7  # Very lenient
+            signal["trend_aligned"] = True
+            signal["expected_return"] = signal["strength"] * 0.015  # Up to 1.5% for ultra-lenient
+        
+        # 6. Price momentum only BUY (no volume requirement)
+        elif (long_trend.direction == "bullish" and
+              long_trend.strength > 0.08 and
+              short_trend.strength > 0.1):  # Some short-term momentum
+            
+            signal["signal"] = "buy"
+            signal["strength"] = (long_trend.strength * 0.6 + short_trend.strength * 0.4)
+            signal["reason"] = "Price momentum (volume optional)"
+            
+            current_price = ticker_data["price"]
+            signal["stop_loss"] = current_price * 0.97  # 3% stop
+            signal["take_profit"] = current_price * 1.04  # 4% target
+            signal["volume_confirmed"] = False  # No volume requirement
+            signal["trend_aligned"] = True
+            signal["expected_return"] = signal["strength"] * 0.02  # Up to 2%
+            
+        # 7. Trend reversal SELL conditions (support breakdown)
         elif (breakout.level_type == "support" and
               (breakout.volume_confirmed or volume_profile.volume_ratio > 1.2) and  # Relaxed
               breakout.false_breakout_risk < 0.6):  # Relaxed
@@ -528,7 +561,7 @@ class EnhancedSignalGenerator:
             signal["volume_confirmed"] = True
             signal["trend_aligned"] = long_trend.direction != "bullish"
             
-        # 6. Climax/exhaustion SELL
+        # 8. Climax/exhaustion SELL
         elif (volume_profile.is_climax and 
               long_trend.direction == "bullish" and
               ticker_data["price"] > prices.tail(min(100, len(prices))).mean() * 1.08):  # Reduced from 1.1
@@ -541,7 +574,7 @@ class EnhancedSignalGenerator:
             signal["volume_confirmed"] = True
             signal["trend_aligned"] = False  # Counter-trend
             
-        # 7. Bearish momentum SELL (new - less strict)
+        # 9. Bearish momentum SELL (new - less strict)
         elif (long_trend.direction == "bearish" and
               long_trend.strength > 0.4 and
               short_trend.strength > 0.3 and
@@ -581,13 +614,15 @@ class EnhancedSignalGenerator:
             else:
                 quality_factors.append(0.5)  # Increased from 0.4
                 
-            # Volume confirmation - more lenient
+            # Volume confirmation - very lenient (optional)
             if signal["volume_confirmed"]:
                 quality_factors.append(0.8)
-            elif volume_profile.volume_ratio > 0.8:  # Not too low
-                quality_factors.append(0.5)  # Partial credit
+            elif volume_profile.volume_ratio > 0.7:  # Lowered threshold
+                quality_factors.append(0.6)  # More credit
+            elif volume_profile.volume_ratio > 0.5:  # Even lower
+                quality_factors.append(0.5)  # Still some credit
             else:
-                quality_factors.append(0.4)  # Increased from 0.3
+                quality_factors.append(0.4)  # Minimum credit, don't penalize too much
                 
             # Breakout quality (optional - not required for all signals)
             if breakout.level_type != "none":
@@ -596,18 +631,18 @@ class EnhancedSignalGenerator:
                 # For momentum signals without breakouts, use trend strength
                 quality_factors.append(0.5 + (long_trend.strength + short_trend.strength) / 4)
                 
-            # No divergence
+            # No divergence (less critical)
             if not volume_profile.is_divergence:
                 quality_factors.append(0.8)
             else:
-                quality_factors.append(0.4)  # Increased from 0.2
+                quality_factors.append(0.5)  # Less penalty for divergence
             
             signal["entry_quality"] = sum(quality_factors) / len(quality_factors)
             
             # Set default expected_return if not already set
             if "expected_return" not in signal or signal["expected_return"] == 0:
-                # Estimate from quality and strength
-                signal["expected_return"] = (signal["entry_quality"] * signal["strength"]) * 0.025  # Up to 2.5%
+                # Estimate from quality and strength - be more optimistic
+                signal["expected_return"] = (signal["entry_quality"] * signal["strength"]) * 0.03  # Up to 3%
         else:
             # Log why signal is neutral for debugging (sample a few pairs)
             import logging
@@ -638,10 +673,10 @@ class EnhancedSignalGenerator:
             Sorted list of (pair, signal) tuples, best first
         """
         # Filter for actionable signals
-        # Lower quality threshold to 0.2 to be even less strict
+        # Lower quality threshold to 0.15 to be much less strict
         actionable = [
             (pair, sig) for pair, sig in signals.items()
-            if sig["signal"] != "neutral" and sig.get("entry_quality", 0) > 0.2
+            if sig["signal"] != "neutral" and sig.get("entry_quality", 0) > 0.15
         ]
         
         # Sort by combined score

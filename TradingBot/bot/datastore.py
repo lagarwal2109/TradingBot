@@ -7,6 +7,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 import pandas as pd
+import numpy as np
 from pydantic import BaseModel
 from bot.config import get_config
 
@@ -64,12 +65,43 @@ class DataStore:
         safe_pair = pair.replace("/", "_").replace("\\", "_")
         return self.data_dir / f"{safe_pair}.csv"
     
-    def append_minute_bar(self, pair: str, timestamp: int, price: float, volume: float = 0) -> None:
-        """Append a minute bar to the pair's CSV file."""
+    def append_minute_bar(
+        self, 
+        pair: str, 
+        timestamp: int, 
+        price: float, 
+        volume: float = 0,
+        open: Optional[float] = None,
+        high: Optional[float] = None,
+        low: Optional[float] = None
+    ) -> None:
+        """Append a minute bar to the pair's CSV file.
+        
+        Args:
+            pair: Trading pair
+            timestamp: Timestamp in milliseconds
+            price: Close price
+            volume: Volume
+            open: Open price (optional, for OHLCV format)
+            high: High price (optional, for OHLCV format)
+            low: Low price (optional, for OHLCV format)
+        """
         csv_path = self.get_csv_path(pair)
         
-        # Check if file exists to determine if we need headers
+        # Check if file exists and what format it uses
         file_exists = csv_path.exists()
+        has_ohlcv = False
+        
+        if file_exists:
+            # Check if file has OHLCV format by reading first line
+            try:
+                with open(csv_path, "r") as f:
+                    reader = csv.reader(f)
+                    header = next(reader, None)
+                    if header and "open" in header and "high" in header and "low" in header:
+                        has_ohlcv = True
+            except Exception:
+                pass  # If we can't read, assume old format
         
         # Append data (file is automatically flushed when context exits)
         with open(csv_path, "a", newline="", buffering=1) as f:  # Line buffering for immediate write
@@ -77,10 +109,23 @@ class DataStore:
             
             # Write header if new file
             if not file_exists:
-                writer.writerow(["timestamp", "price", "volume"])
+                # Use OHLCV format if open/high/low provided, otherwise use old format
+                if open is not None and high is not None and low is not None:
+                    writer.writerow(["timestamp", "open", "high", "low", "price", "volume"])
+                    has_ohlcv = True
+                else:
+                    writer.writerow(["timestamp", "price", "volume"])
             
-            # Write data row
-            writer.writerow([timestamp, price, volume])
+            # Write data row - match existing format
+            if has_ohlcv:
+                # Use provided OHLCV or fill with price if not available
+                open_val = open if open is not None else price
+                high_val = high if high is not None else price
+                low_val = low if low is not None else price
+                writer.writerow([timestamp, open_val, high_val, low_val, price, volume])
+            else:
+                # Old format: just timestamp, price, volume
+                writer.writerow([timestamp, price, volume])
             f.flush()  # Ensure data is written immediately
     
     def collect_minute_bars(self, ticker_data: List[Dict[str, any]]) -> None:
@@ -93,28 +138,109 @@ class DataStore:
             volume = ticker.get("volume_24h", 0)  # Use 24h volume as proxy
             self.append_minute_bar(pair, timestamp, price, volume)
     
+    def load_and_clean(self, pair: str, bar: str = '1h') -> pd.DataFrame:
+        """Load and clean data with uniform bars and monotonic time.
+        
+        Args:
+            pair: Trading pair
+            bar: Resample frequency (default '1h')
+            
+        Returns:
+            Cleaned DataFrame with OHLCV (DatetimeIndex preserved for resampling)
+        """
+        csv_path = self.get_csv_path(pair)
+        
+        if not csv_path.exists():
+            return pd.DataFrame()
+        
+        raw = pd.read_csv(csv_path)
+        
+        # Type conversion
+        raw['timestamp'] = pd.to_numeric(raw['timestamp'], errors='coerce')
+        raw['price'] = pd.to_numeric(raw['price'], errors='coerce')
+        if 'volume' in raw.columns:
+            raw['volume'] = pd.to_numeric(raw['volume'], errors='coerce').fillna(0.0)
+        else:
+            raw['volume'] = 0.0
+        
+        # Handle OHLCV if available
+        if 'open' in raw.columns:
+            raw['open'] = pd.to_numeric(raw['open'], errors='coerce')
+        if 'high' in raw.columns:
+            raw['high'] = pd.to_numeric(raw['high'], errors='coerce')
+        if 'low' in raw.columns:
+            raw['low'] = pd.to_numeric(raw['low'], errors='coerce')
+        
+        # ms epoch → UTC and strict ordering - KEEP DATETIME INDEX for resampling
+        df = (
+            raw.assign(ts=pd.to_datetime(raw['timestamp'], unit='ms', utc=True, errors='coerce'))
+            .dropna(subset=['ts', 'price'])
+            .sort_values('ts')
+            .drop_duplicates('ts', keep='last')
+            .set_index('ts')
+        )
+        
+        if len(df) == 0:
+            return pd.DataFrame()
+        
+        # Uniform grid - resample to bar frequency (requires DatetimeIndex)
+        if 'high' in df.columns and 'low' in df.columns and 'open' in df.columns:
+            # Full OHLCV available
+            ohlc = df[['open', 'high', 'low', 'price']].resample(bar).agg({
+                'open': 'first',
+                'high': 'max',
+                'low': 'min',
+                'price': 'last'
+            })
+            ohlc.columns = ['open', 'high', 'low', 'close']
+        else:
+            # Price-only: create OHLC from price
+            ohlc = df['price'].resample(bar).ohlc()
+        
+        vol = df['volume'].resample(bar).sum(min_count=1) if 'volume' in df.columns else pd.Series(0.0, index=ohlc.index)
+        out = ohlc.join(vol.rename('volume'))
+        
+        # Rename close to price for compatibility
+        if 'close' in out.columns:
+            out['price'] = out['close']
+        
+        # Widen synthetic ranges where missing/flat
+        m = out['high'].isna() | out['low'].isna() | (out['high'] == out['low'])
+        if m.any():
+            close = out.loc[m, 'price'] if 'price' in out.columns else out.loc[m, 'close']
+            rv = close.pct_change(fill_method=None).abs().rolling(20, min_periods=5).mean().fillna(0)
+            span = (0.002 + 2.5 * rv).clip(0.002, 0.05)  # 0.2%..5%
+            out.loc[m, 'open'] = close
+            out.loc[m, 'high'] = close * (1 + span)
+            out.loc[m, 'low'] = close * (1 - span)
+            if 'price' not in out.columns:
+                out['price'] = out['close']
+        
+        # Final validity check
+        out = out.dropna(subset=['price'])
+        out = out[(out['price'] > 0) & (out['high'] > 0) & (out['low'] > 0)]
+        
+        # NOTE: Keep DatetimeIndex for HTF regime computation
+        # Convert to sequential periods AFTER all resampling is done (in backtester)
+        
+        return out
+    
     def read_minute_bars(self, pair: str, limit: Optional[int] = None) -> pd.DataFrame:
-        """Read minute bars for a pair.
+        """Read minute bars for a pair with cleaning and resampling.
         
         Args:
             pair: Trading pair
             limit: Number of most recent bars to return
         
         Returns:
-            DataFrame with timestamp and price columns
+            DataFrame with timestamp, price, and optionally open/high/low/volume columns
+            (backward compatible with price-only format)
         """
-        csv_path = self.get_csv_path(pair)
+        # Use load_and_clean for better data quality
+        df = self.load_and_clean(pair, bar='1h')  # Resample to 1h bars
         
-        if not csv_path.exists():
-            # Return empty DataFrame with correct columns
+        if df.empty:
             return pd.DataFrame(columns=["timestamp", "price"])
-        
-        # Read CSV
-        df = pd.read_csv(csv_path)
-        
-        # Convert timestamp to datetime
-        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-        df = df.set_index("timestamp").sort_index()
         
         # Return limited rows if specified
         if limit:

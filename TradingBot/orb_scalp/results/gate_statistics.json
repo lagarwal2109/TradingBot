@@ -1,0 +1,15 @@
+{
+  "BTCUSD": {
+    "orb_gate1_fail": 55106,
+    "orb_gate3_fail": 336344,
+    "scalp_gate1_fail": 55106,
+    "scalp_signals": 313321,
+    "orb_signals": 2,
+    "orb_gate4_fail": 83777,
+    "scalp_gate3_fail": 117184,
+    "scalp_gate4_fail": 3580,
+    "orb_gate6_fail": 12471,
+    "orb_gate5_fail": 10582,
+    "scalp_gate5_fail": 9091
+  }
+}

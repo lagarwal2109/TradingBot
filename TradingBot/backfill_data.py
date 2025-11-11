@@ -53,20 +53,21 @@ def backfill_from_binance(
             # Store to CSV
             pair = f"{asset}USD"
             for kline in klines:
-                # Store each candle as a minute bar
-                # Use close price and volume
+                # Store each candle as a minute bar with full OHLCV data
                 datastore.append_minute_bar(
                     pair=pair,
                     timestamp=kline.timestamp,
                     price=kline.close,
-                    volume=kline.volume
+                    volume=kline.volume,
+                    open=kline.open,
+                    high=kline.high,
+                    low=kline.low
                 )
             
-            print(f"  Stored {len(klines)} bars for {pair}")
+            print(f"  Stored {len(klines)} bars for {pair} (OHLCV)")
             
-            # For minute-level data, we need to interpolate if using hourly/daily intervals
-            # This is handled by the aggregation functions in DataStore
-            time.sleep(0.2)  # Rate limiting
+            # Rate limiting
+            time.sleep(0.2)
             
         except Exception as e:
             print(f"Error: {e}")
@@ -88,14 +89,14 @@ def main():
     parser.add_argument(
         "--days",
         type=int,
-        default=30,
-        help="Number of days to backfill (default: 30, minimum recommended: 30 for ML training)"
+        default=60,
+        help="Number of days to backfill (default: 60, minimum recommended: 60 for indicator warm-up)"
     )
     parser.add_argument(
         "--interval",
-        choices=["15m", "1h", "1d"],
+        choices=["1m", "5m", "15m", "1h", "4h", "1d"],
         default="1h",
-        help="Data interval"
+        help="Data interval (default: 1h, use 1m for minute-level data)"
     )
     
     args = parser.parse_args()

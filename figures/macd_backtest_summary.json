@@ -1,0 +1,21 @@
+{
+  "initial_capital": 10000.0,
+  "final_equity": 7497.5,
+  "total_return_pct": -25.025,
+  "total_trades": 1,
+  "winning_trades": 0,
+  "losing_trades": 1,
+  "win_rate_pct": 0.0,
+  "total_fees": 5.0,
+  "sharpe_ratio": -25.922962793631445,
+  "sortino_ratio": 0.0,
+  "calmar_ratio": -3.996003996003996,
+  "max_drawdown_pct": -25.025,
+  "avg_win": 0.0,
+  "avg_loss": -5.0,
+  "pairs_tested": [
+    "AAVEUSD"
+  ],
+  "days": 15,
+  "timestamp": "2025-11-11T03:30:32.573013"
+}
