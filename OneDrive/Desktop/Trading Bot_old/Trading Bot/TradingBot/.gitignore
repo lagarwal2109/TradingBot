@@ -30,9 +30,9 @@ build/
 MANIFEST
 
 # Data files
-data/*.csv
-data/state.json
-data/
+# data/*.csv
+# data/state.json
+# data/
 
 # Logs
 logs/
