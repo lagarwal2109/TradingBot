@@ -1,0 +1,13 @@
+{
+  "name": "hmm_trend_LTC",
+  "version": "1.0.0",
+  "saved_at": "2025-11-10T15:40:18.821505",
+  "model_type": "GaussianHMM",
+  "n_states": 3,
+  "is_fitted": true,
+  "state_names": [
+    "bearish",
+    "neutral",
+    "bullish"
+  ]
+}

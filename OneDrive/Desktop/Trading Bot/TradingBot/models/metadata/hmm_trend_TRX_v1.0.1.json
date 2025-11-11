@@ -1,0 +1,13 @@
+{
+  "name": "hmm_trend_TRX",
+  "version": "1.0.1",
+  "saved_at": "2025-11-10T15:40:20.231376",
+  "model_type": "GaussianHMM",
+  "n_states": 3,
+  "is_fitted": true,
+  "state_names": [
+    "bearish",
+    "neutral",
+    "bullish"
+  ]
+}
