@@ -37,7 +37,7 @@ This separation provides better data quality, faster execution, and improved rel
 - **Data Collection**: Continuous minute bar data with volume tracking from Horus
 - **Backtesting**: Comprehensive backtesting with performance metrics
 - **Kill Switch**: Automatic shutdown after consecutive errors
-- **One Trade Per Minute**: Strictly enforces exchange limits
+- **One Trade Per Minute**: Strictly enforces exchange limits 
 
 ## Performance Metrics
 
