@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Roostoo Trading Bot every minute
+Requires=roostoo-bot.service
+
+[Timer]
+# Run every minute
+OnCalendar=*-*-* *:*:00
+AccuracySec=1s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
