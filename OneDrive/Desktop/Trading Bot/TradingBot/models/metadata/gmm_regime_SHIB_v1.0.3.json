@@ -1,8 +1,0 @@
-{
-  "name": "gmm_regime_SHIB",
-  "version": "1.0.3",
-  "saved_at": "2025-11-10T15:38:47.932951",
-  "model_type": "GaussianMixture",
-  "n_components": 2,
-  "is_fitted": true
-}

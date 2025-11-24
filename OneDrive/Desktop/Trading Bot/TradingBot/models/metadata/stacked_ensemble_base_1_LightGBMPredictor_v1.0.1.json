@@ -1,7 +1,0 @@
-{
-  "name": "stacked_ensemble_base_1_LightGBMPredictor",
-  "version": "1.0.1",
-  "saved_at": "2025-11-10T17:45:50.274919",
-  "model_type": "LGBMClassifier",
-  "is_fitted": true
-}

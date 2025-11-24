@@ -1,7 +1,0 @@
-{
-  "name": "stacked_ensemble_base_2_RandomForestPredictor",
-  "version": "1.0.1",
-  "saved_at": "2025-11-10T17:45:50.291925",
-  "model_type": "RandomForestClassifier",
-  "is_fitted": true
-}
